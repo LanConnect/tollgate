@@ -112,7 +112,7 @@ class NetworkHost(Model):
 			return None
 		else:
 			return oui
-	
+
 	@property
 	def vendor(self):
 		o = self.get_console_oui()
@@ -120,7 +120,7 @@ class NetworkHost(Model):
 			return 'pc'
 		else:
 			return o.slug
-	
+
 	@property
 	def is_console(self):
 		o = self.get_console_oui()
@@ -150,7 +150,7 @@ class EventAttendance(Model):
 			("can_register_attendance", "May use the event attendance registration system."),
 			("can_view_quota", "May view quota usage summaries."),
 			("can_reset_quota", "May reset quota usage."),
-			("can_change_coffee", "May change who has access to send coffee requests."), # this is a seperate ACL because of ravenge and dasman
+			#("can_change_coffee", "May change who has access to send coffee requests."), # this is a seperate ACL because of ravenge and dasman
 		)
 	event = ForeignKey(Event)
 	user_profile = ForeignKey(UserProfile)
@@ -159,8 +159,7 @@ class EventAttendance(Model):
 	quota_amount = PositiveIntegerField(default=long(settings.DEFAULT_QUOTA_AMOUNT)*1048576L)
 	quota_unmetered = BooleanField(default=False)
 
-	# ALTER TABLE `tollgate`.`frontend_eventattendance` ADD COLUMN `coffee` TINYINT(1)  NOT NULL DEFAULT 0 AFTER `quota_unmetered`;
-	coffee = BooleanField(default=False)
+	#coffee = BooleanField(default=False)
 
 	registered_by = ForeignKey(UserProfile, null=True, blank=True, related_name="registered_by")
 	registered_on = DateTimeField(auto_now_add=True)

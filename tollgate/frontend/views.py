@@ -481,9 +481,9 @@ def usage_info(request, aid):
 	else:
 		reset_form = ResetExcuseForm()
 
-	coffee_form = CoffeeForm({'coffee': a.coffee})
+	#coffee_form = CoffeeForm({'coffee': a.coffee})
 
-	return render_to_response('frontend/usage-info.html', {'a': a, 'quota_update_fail': quota_update_fail, 'reset_form': reset_form, 'coffee_form': coffee_form}, context_instance=RequestContext(request))
+	return render_to_response('frontend/usage-info.html', {'a': a, 'quota_update_fail': quota_update_fail, 'reset_form': reset_form}, context_instance=RequestContext(request)) #, 'coffee_form': coffee_form
 
 
 @user_passes_test(lambda u: u.has_perm('frontend.can_reset_quota'))
@@ -590,17 +590,17 @@ def usage_disable(request, aid):
 	disable_user_quota(a)
 	return HttpResponseRedirect('/usage/' + str(aid) + '/')
 
-@user_passes_test(lambda u: u.has_perm('frontend.can_change_coffee'))
-def usage_coffee(request, aid):
-	a = get_object_or_404(EventAttendance, id=aid)
-	if request.method == "POST":
-		coffee_form = CoffeeForm(request.POST)
-		if coffee_form.is_valid():
-			a.coffee = coffee_form.cleaned_data["coffee"]
-			a.save()
+#@user_passes_test(lambda u: u.has_perm('frontend.can_change_coffee'))
+#def usage_coffee(request, aid):
+#	a = get_object_or_404(EventAttendance, id=aid)
+#	if request.method == "POST":
+#		coffee_form = CoffeeForm(request.POST)
+#		if coffee_form.is_valid():
+#			a.coffee = coffee_form.cleaned_data["coffee"]
+#			a.save()
 
-	# we're done now, redirect back.
-	return HttpResponseRedirect('/usage/' + str(aid) + '/')
+#	# we're done now, redirect back.
+#	return HttpResponseRedirect('/usage/' + str(aid) + '/')
 
 @user_passes_test(lambda u: u.has_perm('frontend.can_view_ownership'))
 def pclist(request):

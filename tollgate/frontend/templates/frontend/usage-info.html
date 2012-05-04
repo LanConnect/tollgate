@@ -59,6 +59,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	{% endif %}
 </ul>
 
+{% comment %}
 <h2>Other Switches</h2>
 <ul>
 	{% if perms.frontend.can_change_coffee %}
@@ -72,6 +73,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 		<li>Coffee notification system access: {% if a.coffee %}<span class="yes">Yes</span>{% else %}<span class="no">No</span>{% endif %}</li>
 	{% endif %}
 </ul>
+{% endcomment %}
 
 <h2>{{ a.user_profile.user.username }}'s Resets ({{ a.get_resets|length }})</h2>
 {% if a.get_resets %}
@@ -81,7 +83,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 			<th>Reset performed by</th>
 			<th>Excuse</th>
 		</tr>
-		
+
 		{% for reset in a.get_resets %}
 			<tr class="{% cycle row1,row2 %}">
 				<td>{{ reset.when }}</td>

@@ -63,12 +63,12 @@ class ResetExcuseForm(forms.Form):
 		max_length=256
 	)
 
-class CoffeeForm(forms.Form):
-	coffee = forms.BooleanField(
-		label=_('Unlimited Coffee?'),
-		help_text=_('Allows coffee requests to be sent by the user.'),
-		required=False
-	)
+#class CoffeeForm(forms.Form):
+#	coffee = forms.BooleanField(
+#		label=_('Unlimited Coffee?'),
+#		help_text=_('Allows coffee requests to be sent by the user.'),
+#		required=False
+#	)
 
 class SignInForm1(forms.Form):
 	username = forms.CharField(
