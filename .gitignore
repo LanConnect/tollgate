@@ -1,35 +1,52 @@
+# Version Control
 .hg
 .svn
 *.svn-base
+
+# Database
 *.sqlite3
-*.pyc
-*.ini
-*.swp
-*.orig
+*.db3
+*.db
+
+# Editor Configs
 .project
 .pydevproject
-*.db
-*.db3
 .settings
-*~
+*.userprefs
+*.sln
+*.mdproj
 out.err
+*~
+*.swp
+*.orig
+
+# Os Metadata
 .DS_Store
 __MACOSX
 Thumbs.db
 desktop.ini
+
+# Settings
 settings_local.py
+tollgate/settings/local.py
+*.ini
 *.pem
 *.crt
+
+# Generated Files
 *.cache
-*.userprefs
-*.sln
-*.mdproj
+.sass-cache
+*.py[co]
+
+# Temporary Data
 oui.txt
 oui.txt.etag
 protocol-numbers.xml
 protocol-numbers.xml.etag
-tollgate/settings/local.py
+
+# Virtualenv/PIP
 /build
 /dist
 *.egg-info
 docs/_build
+/environ/

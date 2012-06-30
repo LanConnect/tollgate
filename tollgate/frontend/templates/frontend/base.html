@@ -1,5 +1,13 @@
+<!--
+  ______ ____ _   _   ____    _  ______ ____
+ |__   _/    \ | | | /  __\  / \|__   _| ___|
+    | | | || | | | | | | __ / _ \  | | | |_
+    | | | || | |_| |_| |_\|/ /_\ \ | | | |__
+    |_| \____/___|___\____/_/   \_\|_| |____|
+                      You Know, For Internet!
+-->
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">{% load future %}
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 {% comment %}
 tollgate base template page
 Copyright 2008-2012 Michael Farrell <http://micolous.id.au/>
@@ -17,23 +25,23 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% endcomment %}
-{% load i18n %}
+{% load future i18n %}
 <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="{{ LANGUAGE_CODE }}" lang="{{ LANGUAGE_CODE }}">
 	<head>
-		<script language="javascript" type="text/javascript" src="{{ STATIC_URL }}tollgate/flot/jquery.min.js"></script>
-		<script language="javascript" type="text/javascript" src="{{ STATIC_URL }}tollgate/flot/jquery.flot.min.js"></script>
-		<script language="javascript" type="text/javascript" src="{{ STATIC_URL }}tollgate/underscore.min.js"></script>
-
+		<script language="javascript" type="text/javascript" src="{{ STATIC_URL }}tollgate/js/lib/jquery.min.js"></script>
+		<script language="javascript" type="text/javascript" src="{{ STATIC_URL }}tollgate/js/lib/jquery.flot.min.js"></script>
+		<script language="javascript" type="text/javascript" src="{{ STATIC_URL }}tollgate/js/lib/underscore.min.js"></script>
+		{% include "frontend/snippets/_bootstrap_scripts.html" %}
 		{% if user.is_authenticated %}
-			<link rel="stylesheet" href="{{ STATIC_URL }}tollgate/{{ user.get_profile.theme }}.css" media="screen" type="text/css" />
+			<link rel="stylesheet" href="{{ STATIC_URL }}tollgate/css/{{ user.get_profile.theme }}.css" media="screen" type="text/css" />
 		{% else %}
-			<link rel="stylesheet" href="{{ STATIC_URL }}tollgate/cake.css" media="screen" type="text/css" />
+			<link rel="stylesheet" href="{{ STATIC_URL }}tollgate/css/light{{ themes.0 }}.css" media="screen" type="text/css" />
 		{% endif %}
 
-		{% for f,n in themes %}
-			<link rel="alternate stylesheet" href="{{ STATIC_URL }}tollgate/{{ f }}.css" media="screen" title="{{ n }}" type="text/css" />
+		{% for file,name in themes %}
+			<link rel="alternate stylesheet" href="{{ STATIC_URL }}tollgate/css/{{ file }}.css" media="screen" title="{{ name }}" type="text/css" />
 		{% endfor %}
-		<title>tollgate :: {% block windowtitle %}(default){% endblock %}</title>
+		<title>{% block windowtitle %}(default){% endblock %} << TOLLGATE</title>
 		<!--
 			tollgate, a captive portal system for lan parties.
 			Copyright 2008-2012 Michael Farrell <http://micolous.id.au/>
@@ -56,81 +64,96 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	</head>
 
 	<body>
-		<!-- hack for background to allow border-image -->
-		<div id="bghack"></div>
+		<div class="navbar navbar-fixed-top">
+			<div class="navbar-inner">
+				<div class="container">
+					<ul class="nav">
+						<li class="branding active"><a href="{% url 'index' %}">Home</a></li>
 
-		<div id="menubar">
-			<ul>
-				<li><a href="{% url 'index' %}">tollgate</a></li>
-				<li><a href="{% url 'quota' %}">{% trans "my devices and quota" %}</a></li>
-				<li><a href="{% url 'internet' %}">{% trans "login other computers" %}</a></li>
+					{% if perms.frontend.can_view_ownership %}
+						<li><a href="{% url 'pclist' %}">{% trans "computer list" %}</a></li>
+					{% endif %}
+						<li><a href="{% url 'internet' %}">{% trans "login other computers" %}</a></li>
 
-				{% if perms.frontend.can_view_quota %}
-					<li><a href="{% url 'usage' %}">{% trans "quota management" %}</a></li>
-				{% endif %}
+					<li class="divider-vertical"></li>
 
-				{% if perms.frontend.can_view_ownership %}
-					<li><a href="{% url 'pclist' %}">{% trans "computer list" %}</a></li>
-				{% endif %}
+						<li><a href="{% url 'quota' %}">{% trans "my devices and quota" %}</a></li>
+					{% if perms.frontend.can_view_quota %}
+						<li><a href="{% url 'usage' %}">{% trans "quota management" %}</a></li>
+					{% endif %}
 
-				{% if perms.frontend.can_register_attendance %}
-					<li><a href="{% url 'signin' %}">{% trans "sign in" %}</a></li>
-				{% endif %}
+					<li class="divider-vertical"></li>
 
-				{% if perms.frontend.can_ip4portforward %}
-					<li><a href="{% url 'ip4portforward_list' %}">{% trans "ipv4 port forwarding" %}</a></li>
-				{% endif %}
-				
-				{% if user.is_staff %}
-					<li><a href="{% url 'admin:index' %}">{% trans "system administration" %}</a></li>
-				{% endif %}
-				
-				{% if user.is_authenticated %}
-		 			<li>
-	 					{% trans "logged in as:" %} {{ user.username }} ({{ user.first_name }} {{ user.last_name }})
-		 			</li>
-					<li><a href="{% url 'account_password_change' %}">{% trans "change password" %}</a></li>
-		 			<li><a href="{% url 'logout' %}">{% trans "logout" %}</a></li>
-		 		{% else %}
-		 			<li>{% trans "not logged in" %}</li>
-		 			<li><a href="/login/">{% trans "login" %}</a></li>
-		 		{% endif %}
-		 		
-				<!--
-		 		<li>
-					<form action="/i18n/setlang/" method="post">{% csrf_token %}
-						<select name="language">
-							{% for lang in LANGUAGES %}
-								<option value="{{ lang.0 }}">{{ lang.1 }}</option>
-							{% endfor %}
-						</select>
-						<input type="submit" value="{% trans "change language" %}" />
-					</form>
-		 		</li>
-		 		-->
+					{% if perms.frontend.can_ip4portforward %}
+						<li><a href="{% url 'ip4portforward_list' %}">{% trans "ipv4 port forwarding" %}</a></li>
+					{% endif %}
+
+					</ul>
+					<ul class="nav pull-right">
+
+					{% if perms.frontend.can_register_attendance %}
+						<li><a href="{% url 'signin' %}">{% trans "sign in" %}</a></li>
+					{% endif %}
+
+					{% if user.is_authenticated %}
+						<li class="dropdown">
+							<a href="#" class="dropdown-toggle" data-toggle="dropdown">
+								<img class="gravatar xmlsmall" src="//www.gravatar.com/avatar/{{ user.get_profile.gravatar }}?s=24&d=mm&r=g" height=24 width=24 />
+								{# trans "logged in as:" #} {{ user.username }} {#({{ user.first_name }} {{ user.last_name }})#}
+								<span class="caret"></span></a>
+							<ul class="dropdown-menu">
+							{% if user.is_staff %}
+								<li><a href="{% url 'admin:index' %}"><i class="icon-cogs"></i>
+									{% trans "system administration" %}</a></li>
+							{% endif %}
+								<li><a href="{% url 'account_password_change' %}"><i class="icon-key"></i>
+									{% trans "change password" %}</a></li>
+								<li><a href="{% url 'logout' %}"><i class="icon-off"></i>
+									{% trans "logout" %}</a></li>
+							</ul>
+						</li>
+					{% else %}
+						<li><a href="/login/">{% trans "login" %}</a></li>
+					{% endif %}
+					{% comment %}
+						<li>
+							<li class="dropdown">
+								<a href="#" class="dropdown-toggle" data-toggle="dropdown">
+									{% trans "Change Language" %}</a>
+							<ul class="dropdown-menu">
+								{% for lang in LANGUAGES %}
+									<li><a href="/i18n/setlang/?lang={{ lang.0 }}">{{ lang.1 }}</a></li>
+								{% endfor %}
+							</ul>
+						</li>
+					{% endcomment %}
+					</ul>
+				</div>
+			</div>
+		</div>
+		<div class="container">
+			{% block submenu %}{% endblock %}
+			<h1>{% block title %}(default){% endblock %}</h1>
+
+			{% if messages %}
+			<ul class="messages">
+			    {% for message in messages %}
+			    <li class="{{ message.tags }}">{{ message }}</li>
+			    {% endfor %}
 			</ul>
+			{% endif %}
+
+			<div id="content">
+				{% block content %}{% endblock %}
+			</div>
+
 		</div>
-		<div id="submenubar">
-	    {% block submenu %}
-	    {% endblock %}
-		</div>
-		
-		<h1>{% block title %}(default){% endblock %}</h1>
-		
-		{% if messages %}
-		<ul class="messages">
-		    {% for message in messages %}
-		    <li{% if message.tags %} class="{{ message.tags }}"{% endif %}>{{ message }}</li>
-		    {% endfor %}
-		</ul>
-		{% endif %}
-		
-		<div id="content">
-	    {% block content %}{% endblock %}
-		</div>
-		
-		<div id="copyrights">
-			<p>tollgate {{ tollgate_version }} is <abbr title="copyright">&copy;</abbr> 2008-2012 Michael Farrell and contributors.  <a href="{% url 'source' %}">Source code and licensing information</a>.</p>
+		<div class="footer">
+			<div class="container">
+				<div id="copyrights">
+					<p>tollgate {{ tollgate_version }} is <abbr title="copyright">&copy;</abbr> 2008-2012 Michael Farrell and contributors.  <a href="{% url 'source' %}">Source code and licensing information</a>.</p>
+				</div>
+			</div>
 		</div>
 	</body>
 </html>

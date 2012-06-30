@@ -14,7 +14,7 @@ GNU Affero General Public License for more details.
 You should have received a copy of the GNU Affero General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
+import md5
 from django.db.models import *
 from django.contrib.auth.models import User
 from datetime import datetime
@@ -60,14 +60,15 @@ def utcnow():
 	else:
 		# Timezone support is disabled, return localtime instead.
 		return datetime.now()
-		
+
 class UserProfile(Model):
 	class Meta:
 		ordering = ['user__username']
 
 	user = ForeignKey(User, unique=True, related_name="user")
 	internet_on = BooleanField(default=True)
-	theme = CharField(default='cake', max_length=30, choices=THEME_CHOICES)
+	theme = CharField(max_length=30, choices = THEME_CHOICES,
+									 default = THEME_CHOICES[0])
 
 	def get_hosts(self):
 		return NetworkHost.objects.filter(user_profile=self)
@@ -76,18 +77,22 @@ class UserProfile(Model):
 		return NetworkHostOwnerChangeEvent.objects.filter(
 			Q(old_owner=self) | Q(new_owner=self)
 		)
-	
+
 	@property
 	def username(self):
 		return self.user.username
-	
+
 	@property
 	def first_name(self):
 		return self.user.first_name
-	
+
 	@property
 	def last_name(self):
 		return self.user.last_name
+
+	@property
+	def gravatar(self):
+		return md5.md5(self.user.email).hexdigest()
 
 	def __unicode__(self):
 		return u'%s' % (self.user,)
@@ -150,7 +155,6 @@ class EventAttendance(Model):
 			("can_register_attendance", "May use the event attendance registration system."),
 			("can_view_quota", "May view quota usage summaries."),
 			("can_reset_quota", "May reset quota usage."),
-			#("can_change_coffee", "May change who has access to send coffee requests."), # this is a seperate ACL because of ravenge and dasman
 		)
 	event = ForeignKey(Event)
 	user_profile = ForeignKey(UserProfile)
@@ -240,7 +244,8 @@ class NetworkHostOwnerChangeEvent(Model):
 		return u'(NHOCE: on %s from %s to %s at %s)' % (self.network_host, self.old_owner, self.new_owner, self.when)
 
 def timedelta_to_seconds(td):
-	"from <http://stackoverflow.com/questions/1083402/missing-datetime-timedelta-toseconds-float-in-python>.  This really should be in the standard library."
+	"from <http://stackoverflow.com/questions/1083402/missing-datetime-timedelta-toseconds-float-in-python>. "
+	"This really should be in the standard library."
 	return (td.days * 60 * 60 * 24) + td.seconds + td.microseconds / 1E6
 
 class NetworkUsageDataPoint(Model):
@@ -286,10 +291,14 @@ class Oui(Model):
 	class Meta:
 		ordering = ['hex', ]
 		verbose_name = "OUI"
-	hex = CharField(max_length=6, help_text="The first six characters of a MAC address for this vendor.", unique=True)
-	full_name = CharField(max_length=100, help_text="The full name of the vendor.")
-	slug = SlugField(help_text="A shortcode for the item.", unique=False)
-	is_console = BooleanField(blank=True, help_text="Could this device be a console?")
+	hex = CharField(max_length=6, unique=True,
+		help_text="The first six characters of a MAC address for this vendor.")
+	full_name = CharField(max_length=100,
+		help_text="The full name of the vendor.")
+	slug = SlugField(unique=False,
+		help_text="A shortcode for the item.")
+	is_console = BooleanField(blank=True,
+		help_text="Could this device be a console?")
 
 	def __unicode__(self):
 		return u'%s (%s)' % (self.hex, self.full_name)
@@ -474,7 +483,7 @@ def refresh_all_quota_usage(portal=None):
 	r = EventAttendance.objects.filter(event__exact=event)
 	for e in r:
 		refresh_quota_usage(e, portal)
-	
+
 	# now download all the quota counters back and check if there's any that shouldn't be here.
 	counters = portal.get_all_users_quota_remaining()
 	for uid, quota in counters:
@@ -632,4 +641,3 @@ def apply_ip4portforwards():
 			external_port = 0
 
 		portal.ip4pf_add(pf.host.ip_address, pf.protocol_id, port, external_port)
-		

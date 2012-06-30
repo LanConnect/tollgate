@@ -1,8 +1,9 @@
 @import compass/css3/font-face
 
-$font_path: "fontawesome-webfont" !default
+$font-path: "../fonts/" !default
+$fontawesome-path: "#{$font-path}fontawesome-webfont" !default
 
-+font-face("FontAwesome", font-files("#{$font_path}.woff", woff, "#{$font_path}.ttf", truetype, "#{$font_path}.otf", opentype, "#{$font_path}.svgz#FontAwesomeRegular", svg, "#{$font_path}.svg#FontAwesomeRegular", svg), "#{$font_path}.eot", normal, normal)
++font-face("FontAwesome", font-files("#{$fontawesome-path}.woff", woff, "#{$fontawesome-path}.ttf", truetype, "#{$fontawesome-path}.otf", opentype, "#{$fontawesome-path}.svgz#FontAwesomeRegular", svg, "#{$fontawesome-path}.svg#FontAwesomeRegular", svg), "#{$fontawesome-path}.eot", normal, normal)
 
 // ICONS
 // Glyphs and icons for buttons, nav, and more

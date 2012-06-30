@@ -21,3 +21,6 @@ Thomas Woolford (2012-)
 
 William Brown (2009-)
    Testing and feedback.  Deployment and packaging improvements.
+
+Thomas Woolford (2011)
+   New theme and support breaking out functionality

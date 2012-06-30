@@ -21,7 +21,7 @@ I'm assuming here that you have:
 * Installed everything else you need to make your network work -- that is, DHCP server, DNS server, multiple network interfaces in your tollgate machine (which will be your router / default gateway).
 * Installed and configured DBUS.
 * Installed other dependencies.
- 
+
 Installation and configuration of those is outside of the scope of this document.  If you're looking up HOWTO documents on the internet, do not do anything with `iptables`, as setting up a NAT and routing itself is part of tollgate.
 
 Install tollgate
@@ -80,9 +80,9 @@ You should also setup a ``STATIC_ROOT`` for where all the static files should be
 
 To your ``INSTALLED_APPS``, append::
 
-   'django.contrib.humanize', 
-   'south', 
-   'tollgate.api', 
+   'django.contrib.humanize',
+   'south',
+   'tollgate.api',
    'tollgate.frontend',
    'tollgate.scripts'
 
@@ -123,7 +123,7 @@ To make the daemons start, run::
    $ sudo update-rc.d tollgate-captivity defaults
 
 Modify the backend configuration as appropriate for your network (``/etc/tollgate/backend.ini``).
-	
+
 We won't start the daemons just yet, though.
 
 Configure cron

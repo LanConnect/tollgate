@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from django import forms
 import tollgate
-from django.shortcuts import render_to_response, get_object_or_404, redirect
+from django.shortcuts import render, get_object_or_404, redirect
 from tollgate.frontend.models import *
 from django.http import HttpResponseRedirect, HttpResponseForbidden, HttpResponse
 from datetime import datetime, timedelta
@@ -48,7 +48,7 @@ class RequestContext(RequestContextOriginal):
 	tollgate_version = tollgate.__version__
 
 def controller_error(request):
-	return render_to_response('frontend/controller-error.html', {'excinfo': "%s: %s" % (sys.exc_type, sys.exc_value), 'traceback': extract_tb(sys.exc_traceback)}, context_instance=RequestContext(request))
+	return render(request, 'frontend/controller-error.html', {'excinfo': "%s: %s" % (sys.exc_type, sys.exc_value), 'traceback': extract_tb(sys.exc_traceback)})
 
 def login(request):
 	if request.user.is_authenticated():
@@ -58,7 +58,7 @@ def login(request):
 	if request.method == 'POST':
 		f = LoginForm(request.POST)
 		if not f.is_valid():
-			return render_to_response('frontend/login.html', {'f': f, 'fail': False}, context_instance=RequestContext(request))
+			return render(request, 'frontend/login.html', {'f': f, 'fail': False})
 
 		# check if the user has a password set already
 		user = authenticate(username=f.cleaned_data['username'], password=f.cleaned_data['password'])
@@ -67,7 +67,7 @@ def login(request):
 				'f': f, 'fail': True, 'fail_credentials': True,
 			}
 
-			return render_to_response('frontend/login.html', d, context_instance=RequestContext(request))
+			return render(request, 'frontend/login.html', d)
 		else:
 			# user already exists locally, lets use that stuff instead.
 			if not user.is_active:
@@ -75,7 +75,7 @@ def login(request):
 					'f': f, 'fail': True, 'fail_disabled': True,
 				}
 
-				return render_to_response('frontend/login.html', d, context_instance=RequestContext(request))
+				return render(request, 'frontend/login.html', d)
 
 			# success!
 			login_do(request, user)
@@ -112,7 +112,7 @@ def login(request):
 					# log them out if they've already had a useraccount for some reason
 					logout_do(request)
 
-					return render_to_response('frontend/login.html', d, context_instance=RequestContext(request))
+					return render(request, 'frontend/login.html', d)
 
 			attendance = get_attendance_currentevent(profile)
 
@@ -133,11 +133,11 @@ def login(request):
 			return HttpResponseRedirect('/')
 	else:
 		f = LoginForm()
-		return render_to_response('frontend/login.html', {'f': f, 'fail': False}, context_instance=RequestContext(request))
+		return render(request, 'frontend/login.html', {'f': f, 'fail': False})
 
 def logout(request):
 	logout_do(request)
-	return render_to_response('frontend/logout.html', context_instance=RequestContext(request))
+	return render(request, 'frontend/logout.html')
 
 @login_required
 def internet_login_here(request):
@@ -146,10 +146,10 @@ def internet_login_here(request):
 	mac = get_mac_address(ip)
 	if mac == None:
 		# failure
-		return render_to_response('frontend/internet_login_here-failure.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/internet_login_here-failure.html')
 	if settings.ONLY_CONSOLE and not is_console(mac):
-		return render_to_response('frontend/not-a-console.html', context_instance=RequestContext(request))
-	
+		return render(request, 'frontend/not-a-console.html')
+
 	#mac = mac.replace(":", "")
 
 	return HttpResponseRedirect('/internet/login/' + mac + '/')
@@ -174,15 +174,15 @@ def internet_login(request, mac_address):
 
 	# tos is now done externally.
 	#if not profile.accepted_tos:
-	#	return render_to_response('frontend/tos.html', {'u': user}, context_instance=RequestContext(request))
+	#	return render(request, 'frontend/tos.html', {'u': user})
 
 	# find the user's attendance
 	current_event = get_current_event()
 	if current_event is None and not user.is_staff:
-		return render_to_response('frontend/event-not-active.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/event-not-active.html')
 
 	if not has_userprofile_attended(current_event, profile):
-		return render_to_response('frontend/not-signed-in.html', {'event': current_event}, context_instance=RequestContext(request))
+		return render(request, 'frontend/not-signed-in.html', {'event': current_event})
 	attendance = get_userprofile_attendance(current_event, profile)
 
 	# register the computer's ownership permanently
@@ -192,13 +192,13 @@ def internet_login(request, mac_address):
 		if (not settings.ONLY_CONSOLE) or h.is_console:
 			ip = get_ip_address(mac_address)
 		else:
-			return render_to_response('frontend/not-a-console.html', context_instance=RequestContext(request))
+			return render(request, 'frontend/not-a-console.html')
 
 
 		# check that the IP is infact in the subnet
 		if not in_lan_subnet(h.ip_address):
 			# not in subnet, throw error
-			return render_to_response('frontend/internet_login-not_in_subnet.html', {'mac': mac_address.upper()}, context_instance=RequestContext(request))
+			return render(request, 'frontend/internet_login-not_in_subnet.html', {'mac': mac_address.upper()})
 
 		# always update the IP address, even if it's there already.
 		if ip != None:
@@ -214,7 +214,7 @@ def internet_login(request, mac_address):
 				h.user_profile = profile
 			else:
 				# this isn't the current machine, disallow the change
-				return render_to_response('frontend/internet_login-already_owned.html', {'mac': mac_address.upper()}, context_instance=RequestContext(request))
+				return render(request, 'frontend/internet_login-already_owned.html', {'mac': mac_address.upper()})
 		else:
 			h.user_profile = profile
 
@@ -226,7 +226,7 @@ def internet_login(request, mac_address):
 
 	except ObjectDoesNotExist:
 		# can't get mac address from database, another glitch in the matrix
-		return render_to_response('frontend/arp-cache-error.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/arp-cache-error.html')
 
 	try:
 		# sync the database to the firewall
@@ -238,7 +238,7 @@ def internet_login(request, mac_address):
 		# connection failure
 		return controller_error(request)
 	# show the pretty page
-	return render_to_response('frontend/internet_login.html', {'mac': mac_address, 'u': user}, context_instance=RequestContext(request))
+	return render(request, 'frontend/internet_login.html', {'mac': mac_address, 'u': user})
 
 @login_required
 def internet_disown(request, host_id):
@@ -273,13 +273,13 @@ def host_refresh_quick(request):
 def internet(request):
 	refresh_networkhost_quick()
 	hosts = get_unclaimed_online_hosts()
-	return render_to_response('frontend/internet.html', {'hosts': hosts, 'offline': False}, context_instance=RequestContext(request))
+	return render(request, 'frontend/internet.html', {'hosts': hosts, 'offline': False})
 
 @login_required
 def internet_offline(request):
 	refresh_networkhost_quick()
 	hosts = get_unclaimed_offline_hosts()
-	return render_to_response('frontend/internet.html', {'hosts': hosts, 'offline': True}, context_instance=RequestContext(request))
+	return render(request, 'frontend/internet.html', {'hosts': hosts, 'offline': True})
 
 @login_required
 def quota(request):
@@ -288,11 +288,11 @@ def quota(request):
 	profile = get_userprofile(user)
 	current_event = get_current_event()
 	if current_event is None:
-		return render_to_response('frontend/event-not-active.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/event-not-active.html')
 	try:
 		attendance = get_userprofile_attendance(current_event, profile)
 	except ObjectDoesNotExist:
-		return render_to_response('frontend/not-signed-in.html', {'event': current_event}, context_instance=RequestContext(request))
+		return render(request, 'frontend/not-signed-in.html', {'event': current_event})
 
 	quota_update_fail = False
 	try:
@@ -310,7 +310,7 @@ def quota(request):
 		# don't offer a reset unless they've used 70% of their quota already.
 		has_free_reset = attendance.usage_fraction() > 0.7
 		could_get_a_reset_later = not has_free_reset
-	return render_to_response('frontend/quota.html', {'my_hosts': my_hosts, 'attendance': attendance, 'quota_update_fail': quota_update_fail, 'profile': profile, 'has_free_reset' : has_free_reset, 'could_get_a_reset_later': could_get_a_reset_later}, context_instance=RequestContext(request))
+	return render(request, 'frontend/quota.html', {'my_hosts': my_hosts, 'attendance': attendance, 'quota_update_fail': quota_update_fail, 'profile': profile, 'has_free_reset' : has_free_reset, 'could_get_a_reset_later': could_get_a_reset_later})
 
 @login_required
 def quota_on(request):
@@ -318,7 +318,7 @@ def quota_on(request):
 	profile = get_userprofile(user)
 	current_event = get_current_event()
 	if current_event is None:
-		return render_to_response('frontend/event-not-active.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/event-not-active.html')
 	attendance = get_userprofile_attendance(current_event, profile)
 
 	try:
@@ -335,7 +335,7 @@ def quota_user_reset(request):
 	profile = get_userprofile(user)
 	current_event = get_current_event()
 	if current_event is None:
-		return render_to_response('frontend/event-not-active.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/event-not-active.html')
 	attendance = get_userprofile_attendance(current_event, profile)
 
 	#TODO: Make it check you have used at least 70% of your quota before continuing.
@@ -368,17 +368,17 @@ def quota_user_reset(request):
 			return HttpResponseRedirect('/quota/')
 		else:
 			# some answers were incorrect
-			return render_to_response('frontend/reset-lecture.html', {'reset_form': reset_form, 'incorrect': True}, context_instance=RequestContext(request))
+			return render(request, 'frontend/reset-lecture.html', {'reset_form': reset_form, 'incorrect': True})
 	else:
 		reset_form = ResetLectureForm()
-		return render_to_response('frontend/reset-lecture.html', {'reset_form': reset_form, 'incorrect': False}, context_instance=RequestContext(request))
+		return render(request, 'frontend/reset-lecture.html', {'reset_form': reset_form, 'incorrect': False})
 @login_required
 def quota_off(request):
 	user = request.user
 	profile = get_userprofile(user)
 	current_event = get_current_event()
 	if current_event is None:
-		return render_to_response('frontend/event-not-active.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/event-not-active.html')
 	attendance = get_userprofile_attendance(current_event, profile)
 	try:
 		disable_user_quota(attendance)
@@ -396,14 +396,14 @@ def usage(request):
 
 	current_event = get_current_event()
 	if current_event is None:
-		return render_to_response('frontend/event-not-active.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/event-not-active.html')
 
 	attendances = EventAttendance.objects.filter(event__exact=current_event).order_by('user_profile')
 	total = 0L
 	for a in attendances:
 		total += a.quota_used
 
-	return render_to_response('frontend/usage.html', {'attendances': attendances, 'total': bytes_str(total), 'mode': _('alphabetical'), 'quota_update_fail': quota_update_fail}, context_instance=RequestContext(request))
+	return render(request, 'frontend/usage.html', {'attendances': attendances, 'total': bytes_str(total), 'mode': _('alphabetical'), 'quota_update_fail': quota_update_fail})
 
 
 #todo: replace with generic view and roll into one function
@@ -417,14 +417,14 @@ def usage_heavy(request):
 
 	current_event = get_current_event()
 	if current_event is None:
-		return render_to_response('frontend/event-not-active.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/event-not-active.html')
 
 	attendances = EventAttendance.objects.filter(event__exact=current_event).order_by('-quota_used')
 	total = 0L
 	for a in attendances:
 		total += a.quota_used
 
-	return render_to_response('frontend/usage.html', {'attendances': attendances, 'total': bytes_str(total), 'mode': _('highest quota use'), 'quota_update_fail': quota_update_fail}, context_instance=RequestContext(request))
+	return render(request, 'frontend/usage.html', {'attendances': attendances, 'total': bytes_str(total), 'mode': _('highest quota use'), 'quota_update_fail': quota_update_fail})
 
 @user_passes_test(lambda u: u.has_perm('frontend.can_view_quota'))
 def usage_speed(request):
@@ -436,7 +436,7 @@ def usage_speed(request):
 
 	current_event = get_current_event()
 	if current_event is None:
-		return render_to_response('frontend/event-not-active.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/event-not-active.html')
 
 	attendances = list(EventAttendance.objects.filter(event__exact=current_event))
 	attendances.sort(key=(lambda o: o.last_datapoint().average_speed()), reverse=True)
@@ -444,7 +444,7 @@ def usage_speed(request):
 	for a in attendances:
 		total += a.quota_used
 
-	return render_to_response('frontend/usage.html', {'attendances': attendances, 'total': bytes_str(total), 'mode': _('highest speed'), 'quota_update_fail': quota_update_fail}, context_instance=RequestContext(request))
+	return render(request, 'frontend/usage.html', {'attendances': attendances, 'total': bytes_str(total), 'mode': _('highest speed'), 'quota_update_fail': quota_update_fail})
 
 @user_passes_test(lambda u: u.has_perm('frontend.can_view_quota'))
 def usage_morereset(request):
@@ -456,34 +456,35 @@ def usage_morereset(request):
 
 	current_event = get_current_event()
 	if current_event is None:
-		return render_to_response('frontend/event-not-active.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/event-not-active.html', {})
 
 	attendances = EventAttendance.objects.filter(event__exact=current_event).order_by('-quota_multiplier')
 	total = 0L
 	for a in attendances:
 		total += a.quota_used
 
-	return render_to_response('frontend/usage.html', {'attendances': attendances, 'total': bytes_str(total), 'mode': _('most resets'), 'quota_update_fail': quota_update_fail}, context_instance=RequestContext(request))
+	return render(request, 'frontend/usage.html',
+		{'attendances': attendances, 'total': bytes_str(total),
+		 'mode': _('most resets'), 'quota_update_fail': quota_update_fail})
 
 @user_passes_test(lambda u: u.has_perm('frontend.can_view_quota'))
-def usage_info(request, aid):
-	a = get_object_or_404(EventAttendance, id=aid)
+def usage_info(request, attendance_id):
+	attendance = get_object_or_404(EventAttendance, id=attendance_id)
 
 	quota_update_fail = False
 	try:
 		refresh_quota_usage(a)
 	except:
 		quota_update_fail = True
-	pcs = NetworkHost.objects.filter(user_profile__exact=a.user_profile)
+	pcs = NetworkHost.objects.filter(user_profile__exact=attendance.user_profile)
 
 	if request.method == 'POST':
 		reset_form = ResetExcuseForm(request.POST)
 	else:
 		reset_form = ResetExcuseForm()
 
-	#coffee_form = CoffeeForm({'coffee': a.coffee})
-
-	return render_to_response('frontend/usage-info.html', {'a': a, 'quota_update_fail': quota_update_fail, 'reset_form': reset_form}, context_instance=RequestContext(request)) #, 'coffee_form': coffee_form
+	return render(request, 'frontend/usage-info.html',
+		{'attendance': attendance, 'quota_update_fail': quota_update_fail, 'reset_form': reset_form}, )
 
 
 @user_passes_test(lambda u: u.has_perm('frontend.can_reset_quota'))
@@ -502,7 +503,7 @@ def usage_reset(request, aid):
 	my_profile = get_userprofile(request.user)
 	if a.user_profile == my_profile and a.quota_multiplier > 1:
 		# current user is trying to reset their own quota, and they have already reset quota before.
-		return render_to_response('frontend/cant-reset-yourself.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/cant-reset-yourself.html')
 
 	if not a.quota_unmetered:
 		# do the log event first as that's more important.
@@ -524,7 +525,7 @@ def usage_all_on(request):
 	# find all users that are in attendance this lan
 	current_event = get_current_event()
 	if current_event is None:
-		return render_to_response('frontend/event-not-active.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/event-not-active.html')
 
 	attendances = EventAttendance.objects.filter(event__exact=current_event)
 	for attendance in attendances:
@@ -537,7 +538,7 @@ def usage_all_really_on(request):
 	# find all users that are in attendance this lan
 	current_event = get_current_event()
 	if current_event is None:
-		return render_to_response('frontend/event-not-active.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/event-not-active.html')
 
 	attendances = EventAttendance.objects.filter(event__exact=current_event)
 
@@ -556,7 +557,7 @@ def usage_all_off(request):
 	# find all users that are in attendance this lan
 	current_event = get_current_event()
 	if current_event is None:
-		return render_to_response('frontend/event-not-active.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/event-not-active.html')
 
 	attendances = EventAttendance.objects.filter(event__exact=current_event)
 
@@ -590,33 +591,21 @@ def usage_disable(request, aid):
 	disable_user_quota(a)
 	return HttpResponseRedirect('/usage/' + str(aid) + '/')
 
-#@user_passes_test(lambda u: u.has_perm('frontend.can_change_coffee'))
-#def usage_coffee(request, aid):
-#	a = get_object_or_404(EventAttendance, id=aid)
-#	if request.method == "POST":
-#		coffee_form = CoffeeForm(request.POST)
-#		if coffee_form.is_valid():
-#			a.coffee = coffee_form.cleaned_data["coffee"]
-#			a.save()
-
-#	# we're done now, redirect back.
-#	return HttpResponseRedirect('/usage/' + str(aid) + '/')
-
 @user_passes_test(lambda u: u.has_perm('frontend.can_view_ownership'))
 def pclist(request):
 	hosts = NetworkHost.objects.exclude(user_profile__exact=None).order_by('ip_address')
-	return render_to_response('frontend/pclist.html', {'hosts': hosts, 'unowned': False}, context_instance=RequestContext(request))
+	return render(request, 'frontend/pclist.html', {'hosts': hosts, 'unowned': False})
 
 @user_passes_test(lambda u: u.has_perm('frontend.can_view_ownership'))
 def pclist_unowned(request):
 	hosts = NetworkHost.objects.filter(user_profile__exact=None).order_by('ip_address')
-	return render_to_response('frontend/pclist.html', {'hosts': hosts, 'unowned': True}, context_instance=RequestContext(request))
+	return render(request, 'frontend/pclist.html', {'hosts': hosts, 'unowned': True})
 
 def index(request):
 	theme_change_form = None
 	if request.user.is_authenticated():
 		theme_change_form = ThemeChangeForm({'theme': request.user.get_profile().theme})
-	return render_to_response('frontend/index.html', {'theme_change_form': theme_change_form}, context_instance=RequestContext(request))
+	return render(request, 'frontend/index.html', {'theme_change_form': theme_change_form})
 
 @login_required
 def theme_change(request):
@@ -650,9 +639,9 @@ def captive_landing(request):
 	mac = get_mac_address(ip)
 	if mac == None:
 		# The mac address doesn't exist
-		return render_to_response('frontend/internet_login_here-failure.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/internet_login_here-failure.html')
 	if settings.ONLY_CONSOLE and not is_console(mac):
-		return render_to_response('frontend/not-a-console.html', context_instance=RequestContext(request))
+		return render(request, 'frontend/not-a-console.html')
 
 
 	reasons = {'reason_blacklist': False, 'reason_quota': False, 'reason_disabled': False, 'reason_sync': False, 'reason_login': False}
@@ -694,7 +683,7 @@ def captive_landing(request):
 	reasons['dest'] = dest
 	reasons['f'] = LoginForm()
 
-	return render_to_response('frontend/captive_landing.html', reasons, context_instance=RequestContext(request))
+	return render(request, 'frontend/captive_landing.html', reasons)
 
 @user_passes_test(lambda u: u.has_perm('frontend.can_register_attendance'))
 def signin1(request):
@@ -712,14 +701,14 @@ def signin1(request):
 				u = User.objects.get(username__iexact=f.cleaned_data['username'])
 			except ObjectDoesNotExist:
 				# username doesn't exist, lets create.
-				return render_to_response(
+				return render(
+					request,
 					'frontend/signin2.html',
 					dict(
 						form=SignInForm2(
 							initial=dict(username=f.cleaned_data['username'])
 						)
 					),
-					context_instance=RequestContext(request)
 				)
 			else:
 				# username exists, skip to step 3
@@ -730,7 +719,7 @@ def signin1(request):
 	else:
 		f = SignInForm1()
 
-	return render_to_response('frontend/signin1.html', dict(form=f), context_instance=RequestContext(request))
+	return render(request, 'frontend/signin1.html', dict(form=f))
 
 
 @user_passes_test(lambda u: u.has_perm('frontend.can_signin'))
@@ -772,7 +761,7 @@ def signin2(request):
 	else:
 		return redirect('signin')
 
-	return render_to_response('frontend/signin2.html', dict(form=f), context_instance=RequestContext(request))
+	return render(request, 'frontend/signin2.html', dict(form=f))
 
 @user_passes_test(lambda u: u.has_perm('frontend.can_register_attendance'))
 def signin3(request, uid):
@@ -813,7 +802,7 @@ def signin3(request, uid):
 	else:
 		f = SignInForm3()
 
-	return render_to_response('frontend/signin3.html', dict(form=f, u=u), context_instance=RequestContext(request))
+	return render(request, 'frontend/signin3.html', dict(form=f, u=u))
 
 
 def ip4portforward_toggle(request, object_id):

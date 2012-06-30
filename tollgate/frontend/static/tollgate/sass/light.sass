@@ -1,2 +1,36 @@
 // Light Tollgate Theme.
+@import "compass"
+@import "settings"
 @import "bootstrap"
+@import "omg-text"
+
+$footer-peek-height: 2em
+
+.navbar
+  .branding
+    +omg-text( grey, 135, 3, flat)
+  .gravatar
+    margin:
+      top: -8px
+      bottom: -8px
+      right: 4px
+
+.gravatar.small
+  +border-radius(4px)
+html, body
+  height: 100%
+  +box-shadow(0 1px 0 transparentize(black, 0.7))
+
+body >
+  .container
+    +box-sizing(border-box)
+    padding-top: 40px
+    min-height: 100%
+    margin-bottom: -$footer-peek-height
+    padding-bottom: $footer-peek-height
+  .footer
+    background: #AAA
+    min-height: $footer-peek-height
+    width: 100%
+    #copyrights
+      float: right

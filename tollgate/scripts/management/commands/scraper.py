@@ -118,7 +118,7 @@ def parse_oui_data(filename, config):
 	fp.seek(0,2)
 	oui_bytes = fp.tell()
 	fp.seek(0, 0)
-	
+
 	oui_regexps = {}
 	for k, v in config.items('oui'):
 		try:
@@ -127,18 +127,6 @@ def parse_oui_data(filename, config):
 			print "There was a problem compiling the regular expression for %s." % k
 			print "Expression: %s" % v
 			raise ex
-
-	# we're good.  lets clear the existing Oui table because it's data is now outdated.
-	# because we don't care about foreign relations, we should grab the cursor and nuke the table directly.
-	cursor = connection.cursor()
-
-	# these sql queries don't work properly with "correct" escaping.  maybe vulnerable to sqli.
-	try:
-		cursor.execute('TRUNCATE TABLE `%s`' % (Oui._meta.db_table,))
-	except DatabaseError:
-		# truncate may not be supported.  delete it the "slow" way.
-		cursor.execute('DELETE FROM `%s`' % (Oui._meta.db_table,))
-	print "Deleted existing OUI data."
 
 	# now parse the new oui data with the regular expressions provided.
 	print "Reading and populating OUI data..."
@@ -154,12 +142,11 @@ def parse_oui_data(filename, config):
 					#print "%s = %s (%s)" % (k, m.group(1), m.group(2))
 
 					# lets pump this into the database.
-					Oui.objects.create(
-						hex=m.group(1),
-						full_name=m.group(2),
-						slug=k,
-						is_console=(config.has_option('oui-console', k) and config.getboolean('oui-console', k))
-					)
+					oui = Oui.objects.get_or_create( hex=m.group(1) )
+					oui.full_name = m.group(2)
+					oui.slug = k
+					oui.is_console = (config.has_option('oui-console', k) and config.getboolean('oui-console', k))
+
 	progress.finish()
 	print 'Added %d entries to Oui table.' % Oui.objects.count()
 
@@ -211,7 +198,7 @@ def parse_ip4p_data(filename, config):
 		except IntegrityError:
 			# dupe PK
 			print "Warning: duplicate protocol number %s." % (record.value)
-			
+
 	progress.finish()
 	print 'Added %d entries to Protocol table.' % IP4Protocol.objects.count()
 

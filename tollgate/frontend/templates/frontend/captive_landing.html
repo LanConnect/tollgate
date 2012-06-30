@@ -20,8 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% block title %}welcome to the internet{% endblock %}
 
 {% block content %}
-<!-- $Id: captive_landing.html 112 2010-11-10 12:42:16Z michael $
- -->
+<!-- $Id: captive_landing.html 112 2010-11-10 12:42:16Z michael $ -->
 
 {% if user.is_authenticated %}
 	<!-- user is logged in -->
@@ -30,7 +29,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	{% if reason_quota %}
 		<p><strong>Quota:</strong> You have exceeded your <a href="{% url "quota" %}">quota allocation</a> for this event.  If you haven't already, you can get one free reset of your quota, and gain internet access again.  However no additional resets will be available after this.</p>
 	{% endif %}
-	
+
 	{% if reason_disabled %}
 		<p><strong>Disabled Internet Access:</strong> You have disabled your internet access.  During an emergency situation, administrators may also disable internet access temporarily.  If there isn't an emergency issue, you can <a href="{% url "quota-on" %}">click here to re-enable it.</a></p>
 	{% endif %}
@@ -49,21 +48,27 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 		<li>
 			<p>You're not signed onto the internet from this computer and IP address.  This may occur if your IP address has changed for some reason.  This can also be caused by synchonisation problems.</p>
 			<ul>
-				<li><<a href="{% url "internet-login-here" %}">>Click here to log this computer into the internet</a> to enable internet connectivity for this computer in your name.</li>
+				<li>
+					<a href="{% url "internet-login-here" %}">
+						Click here to log this computer into the internet</a>
+					to enable internet connectivity for this computer in your name.
+				</li>
 			</ul>
 		</li>
 
 		<li>
 			<p>You have disabled internet access for yourself.</p>
 			<ul>
-				<li><a href="{% url "quota-on" %}">Click here to enable internet access for yourself.</a></li>
+				<li><a href="{% url "quota-on" %}">
+					Click here to enable internet access for yourself.</a></li>
 			</ul>
 		</li>
 
 		<li>
 			<p>You have run out of quota.</p>
 			<ul>
-				<li><a href="/{% url "quota" %}">Click here to see how much quota you have used.</a></li>
+				<li><a href="/{% url "quota" %}">
+					Click here to see how much quota you have used.</a></li>
 			</ul>
 		</li>
 

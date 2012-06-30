@@ -1,4 +1,5 @@
 # Require any additional compass plugins here.
+require "omg-text"
 
 # Set this to the root of your project when deployed:
 http_path = "/static/"
@@ -9,4 +10,3 @@ javascripts_dir = "js"
 preferred_syntax = :sass
 output_style = :compact
 line_comments = false
-

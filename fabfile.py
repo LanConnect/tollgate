@@ -3,7 +3,6 @@ from fabric.contrib import project
 from fabric.contrib import files
 
 import os, sys, platform, subprocess
-from os.path import join
 from argparse import ArgumentError
 
 env.hosts = ['your_username@yourhost:yourport']
@@ -11,21 +10,22 @@ env.web_path = '/var/www/django'
 env.log_root ='/var/log/apache'
 env.project = '.'
 env.environ = 'environ'
+env.static_dir = "tollgate/frontend/static/tollgate"
 
 @task
 def develop():
     try:
-        static_dir = "tollgate/frontend/static/tollgate"
         compass = subprocess.Popen("compass watch",
-            stdout=sys.stdout, stderr=sys.stderr, shell=True, cwd=static_dir)
+            stdout=sys.stdout, stderr=sys.stderr, shell=True, cwd=env.static_dir)
         coffee  = subprocess.Popen("coffee --output js --watch --bare --compile coffee",
-            stdout=sys.stdout, stderr=sys.stderr, shell=True, cwd=static_dir)
+            stdout=sys.stdout, stderr=sys.stderr, shell=True, cwd=env.static_dir)
         with lcd(env.project):
             local("python manage.py runserver") # this will take up most of the shell output
     except KeyboardInterrupt:
         print "killing server..."
     finally:
-        compass.kill() ; coffee.kill()
+        try: compass.kill() ; coffee.kill()
+        except: pass
 
 @task
 def bootstrap_dev():
@@ -35,6 +35,9 @@ def bootstrap_dev():
         local('pip install -r requirements.txt')
         local('python %(project)s/manage.py syncdb --all' % env)
         local('python %(project)s/manage.py migrate --fake' % env)
+    with cd(env.static_dir):
+        sudo('gem install compass omg-text')
+        sudo('npm install coffeescript')
 
 @task
 def bootstrap(hostname, path=env.web_path, **kwargs):

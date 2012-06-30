@@ -18,8 +18,8 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% endcomment %}
 
 {% load humanize %}
-{% block windowtitle %}internet usage report for {{ a.user_profile.user.username }} {% endblock %}
-{% block title %}internet usage report for {{ a.user_profile.user.username }} {% endblock %}
+{% block windowtitle %}internet usage report for {{ attendance.user_profile.user.username }} {% endblock %}
+{% block title %}internet usage report for {{ attendance.user_profile.user.username }} {% endblock %}
 
 {% block content %}
 {% if quota_update_fail %}
@@ -27,33 +27,33 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 {% endif %}
 
 <h2>Quota Details</h2>
-{% if a.quota_unmetered %}
-	<p>{{ a.user_profile.user.username }} has unlimited quota.  They've used <strong>{{ a.quota_used_str }}</strong> at this event.</p>
+{% if attendance.quota_unmetered %}
+	<p>{{ attendance.user_profile.user.username }} has unlimited quota.  They've used <strong>{{ attendance.quota_used_str }}</strong> at this event.</p>
 {% else %}
-	<p>{{ a.user_profile.user.username }} gets <strong>{{ a.quota_amount_str }}</strong> of quota, which, so far, has been reset <strong>{{ a.reset_count }}</strong> time{{ a.reset_count|pluralize }}.</p>
-	
-	<p>They've used <strong>{{ a.quota_used_str }}</strong>, and have <strong>{{ a.quota_remaining_str }}</strong> remaining.</p>
+	<p>{{ attendance.user_profile.user.username }} gets <strong>{{ attendance.quota_amount_str }}</strong> of quota, which, so far, has been reset <strong>{{ attendance.reset_count }}</strong> time{{ attendance.reset_count|pluralize }}.</p>
+
+	<p>They've used <strong>{{ attendance.quota_used_str }}</strong>, and have <strong>{{ attendance.quota_remaining_str }}</strong> remaining.</p>
 {% endif %}
 
-<div><img src="/usage/{{ a.id }}/graph.png" alt="[usage graph]"/></div>
+<div><img src="/usage/{{ attendance.id }}/graph.png" alt="[usage graph]"/></div>
 
 <h2>Internet Switch</h2>
 <ul>
-	<li><a href="/usage/{{ a.id }}/on/">Switch on {{ a.user_profile.user.username }}'s internet connectivity.</a>  If they have quota available, internet access will be granted to all of their computers and devices.</li>
-	<li><a href="/usage/{{ a.id }}/off/">Switch off {{ a.user_profile.user.username }}'s internet connectivity.</a>  All computers listed here will loose internet access <em>immediately</em>, and all unfinished downloads will be terminated.  Internet access will resume when you or they opt to, or when they try to connect another computer to the internet in their name.</li>
+	<li><a href="/usage/{{ attendance.id }}/on/">Switch on {{ attendance.user_profile.user.username }}'s internet connectivity.</a>  If they have quota available, internet access will be granted to all of their computers and devices.</li>
+	<li><a href="/usage/{{ attendance.id }}/off/">Switch off {{ attendance.user_profile.user.username }}'s internet connectivity.</a>  All computers listed here will loose internet access <em>immediately</em>, and all unfinished downloads will be terminated.  Internet access will resume when you or they opt to, or when they try to connect another computer to the internet in their name.</li>
 	{% if perms.frontend.can_reset_quota %}
-		{% if a.quota_unmetered %}
+		{% if attendance.quota_unmetered %}
 			<li>Cannot reset quota as it is unlimited.</li>
 		{% else %}
 			<li>
-				<form method="post" action="/usage/{{ a.id }}/reset/">{% csrf_token %}
+				<form method="post" action="/usage/{{ attendance.id }}/reset/">{% csrf_token %}
 					{{ reset_form.as_p }}
 					<p><strong>Warning:</strong> This excuse will be logged and visible to the user as well, even if they're not an administrator.  Be polite. :)</p>
-					<p><input type="submit" value="Reset {{ a.user_profile.user.username }}'s quota."/>  They will gain an additional {{ a.quota_amount_str }} of quota, and their internet access will be enabled (if it is disabled).</p>
+					<p><input type="submit" value="Reset {{ attendance.user_profile.user.username }}'s quota."/>  They will gain an additional {{ attendance.quota_amount_str }} of quota, and their internet access will be enabled (if it is disabled).</p>
 				</form>
 			</li>
 		{% endif %}
-		<li><a href="/usage/{{ a.id }}/disable/">Revoke internet access rights.</a>  The user will loose their unlimited status (if any), and their available quota multiplier will be set to zero.  Internet access will be terminated, and can only be reinstated by an administrator.</li>
+		<li><a href="/usage/{{ attendance.id }}/disable/">Revoke internet access rights.</a>  The user will loose their unlimited status (if any), and their available quota multiplier will be set to zero.  Internet access will be terminated, and can only be reinstated by an administrator.</li>
 	{% else %}
 		<li>You're not authorised to reset user quotas or revoke internet access, you need <code>can_reset_quota</code>.</li>
 	{% endif %}
@@ -64,19 +64,19 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 <ul>
 	{% if perms.frontend.can_change_coffee %}
 		<li>
-			<form method="post" action="/usage/{{ a.id }}/coffee/">{% csrf_token %}
+			<form method="post" action="/usage/{{ attendance.id }}/coffee/">{% csrf_token %}
 				{{ coffee_form.as_p }}
 				<p><input type="submit" value="Change"/></p>
 			</form>
 		</li>
 	{% else %}
-		<li>Coffee notification system access: {% if a.coffee %}<span class="yes">Yes</span>{% else %}<span class="no">No</span>{% endif %}</li>
+		<li>Coffee notification system access: {% if attendance.coffee %}<span class="yes">Yes</span>{% else %}<span class="no">No</span>{% endif %}</li>
 	{% endif %}
 </ul>
 {% endcomment %}
 
-<h2>{{ a.user_profile.user.username }}'s Resets ({{ a.get_resets|length }})</h2>
-{% if a.get_resets %}
+<h2>{{ attendance.user_profile.user.username }}'s Resets ({{ attendance.get_resets|length }})</h2>
+{% if attendance.get_resets %}
 	<table class="internet">
 		<tr>
 			<th>When</th>
@@ -84,7 +84,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 			<th>Excuse</th>
 		</tr>
 
-		{% for reset in a.get_resets %}
+		{% for reset in attendance.get_resets %}
 			<tr class="{% cycle row1,row2 %}">
 				<td>{{ reset.when }}</td>
 				<td>{{ reset.performer.user }}</td>
@@ -96,7 +96,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	<p>No resets have been peformed on this account this event.</p>
 {% endif %}
 
-<h2>{{ a.user_profile.user.username }}'s Computers and Devices</h2>
+<h2>{{ attendance.user_profile.user.username }}'s Computers and Devices</h2>
 <p>All traffic generated by these systems will be registered in their name.</p>
 
 {% if perms.frontend.can_view_ownership %}
@@ -108,7 +108,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 			<th>Online</th>
 			<th>Disown/Disconnect</th>
 		</tr>
-		{% for host in a.user_profile.get_hosts %}
+		{% for host in attendance.user_profile.get_hosts %}
 			<tr class="{% cycle row1,row2 %}">
 				<td>{{ host.computer_name }}</td>
 				<td><img src="{{ STATIC_URL }}tollgate/console_icons/{{ host.vendor }}.png" alt="{{ host.vendor }} " title="{{ host.vendor }}"  class="cs"/><code>{{ host.mac_address }}</code></td>
@@ -128,7 +128,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 	<p>You don't have permission to view this (requires <code>can_view_ownership</code>).</p>
 {% endif %}
 
-<h2>{{ a.user_profile.user.username }}'s changes of network host ownership</h2>
+<h2>{{ attendance.user_profile.user.username }}'s changes of network host ownership</h2>
 <p>This is when systems came in to or out of this user's ownership.</p>
 
 {% if perms.frontend.can_view_ownership %}
@@ -142,7 +142,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 			<th>IP Address</th>
 			<th>Online</th>
 		</tr>
-		{% for change in a.user_profile.get_changes %}
+		{% for change in attendance.user_profile.get_changes %}
 			<tr class="{% cycle row1,row2 %}">
 				<td>
 					{% if change.old_owner %}

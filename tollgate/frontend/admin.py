@@ -19,7 +19,7 @@ from django.contrib import admin
 from tollgate.frontend.models import *
 
 class EventAttendanceAdmin(admin.ModelAdmin):
-	list_display = ("event", "user_profile", "quota_used", "quota_multiplier", "quota_amount", "quota_unmetered", "coffee")
+	list_display = ("event", "user_profile", "quota_used", "quota_multiplier", "quota_amount", "quota_unmetered")
 
 class EventAdmin(admin.ModelAdmin):
 	list_display = ("name", "start", "end", "is_active")
