@@ -6,8 +6,7 @@
     |_| \____/___|___\____/_/   \_\|_| |____|
                       You Know, For Internet!
 -->
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
-    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html>
 {% comment %}
 tollgate base template page
 Copyright 2008-2012 Michael Farrell <http://micolous.id.au/>
@@ -38,7 +37,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 			<link rel="stylesheet" href="{{ STATIC_URL }}tollgate/css/light{{ themes.0 }}.css" media="screen" type="text/css" />
 		{% endif %}
 
-		{% for file,name in themes %}
+		{% for file, name in themes %}
 			<link rel="alternate stylesheet" href="{{ STATIC_URL }}tollgate/css/{{ file }}.css" media="screen" title="{{ name }}" type="text/css" />
 		{% endfor %}
 		<title>{% block windowtitle %}(default){% endblock %} << TOLLGATE</title>

@@ -20,7 +20,8 @@ from os import system, listdir
 from os.path import exists, join, isfile
 from sys import exit
 from re import compile as re_compile
-import dbus, dbus.service, dbus.glib, gobject
+import dbus, dbus.service, dbus.glib, glib
+from dbus.mainloop.glib import DBusGMainLoop
 
 DEBUG = False
 
@@ -56,7 +57,7 @@ def run_capture_output(args):
 	return stdout
 	
 def read_all_file(filename):
-	fh = open('/proc/modules')
+	fh = open(filename)
 	d = fh.read()
 	fh.close()
 	return d
@@ -64,6 +65,8 @@ def read_all_file(filename):
 def check_modules(*modules):
 	"""
 	Checks if modules have been loaded successfully.
+
+	Returns None if they are all there, otherwise a list of modules missing.
 	"""
 	modules = list(modules)
 	d = read_all_file('/proc/modules')
@@ -73,10 +76,29 @@ def check_modules(*modules):
 			modules.remove(module_name)
 		if not bool(modules):
 			# modules list is empty, pass!
-			return True
+			return None
 	
 	# modules list has stuff in it still
-	return False
+	return modules
+
+def check_symbols(*symbols):
+	"""
+	Checks if symbols are in the kernel.
+
+	Returns None if they are all there, otherwise a list of symbols missing.
+	"""
+	symbols = list(symbols)
+	d = read_all_file('/proc/kallsyms')
+	for l in d.split('\n'):
+		symbol_name = l.split(' ')[2].split("\t")[0]
+		if symbol_name in symbols:
+			symbols.remove(symbol_name)
+		if not bool(symbols):
+			# symbols list is empty, pass!
+			return None
+	
+	# symbols list has stuff in it still
+	return symbols
 
 def load_modules(*modules):
 	for module in modules:
@@ -84,14 +106,43 @@ def load_modules(*modules):
 	
 def create_nat():
 	# load kernel modules that may not have loaded.
-	# TODO: check if these are built into the kernel.
-	modules = set(('x_tables', 'xt_quota2', 'ip_tables', 'xt_TPROXY', 'nf_conntrack', 'nf_conntrack_ipv4', 'iptable_nat', 'ipt_MASQUERADE', 'iptable_filter', 'xt_state', 'ipt_REJECT', 'iptable_mangle', 'xt_mark'))
+	modules = set(('x_tables', 'xt_quota2', 'xt_TPROXY', 'nf_conntrack', 'nf_conntrack_ipv4', 'iptable_nat', 'ipt_MASQUERADE', 'iptable_filter', 'xt_state', 'ipt_REJECT', 'iptable_mangle', 'xt_mark'))
+
+	symbols = set((
+		'xt_table_open', # x_tables
+		'quota_mt2', # xt_quota2
+		'tproxy_tg4', # xt_TPROXY
+		'nf_conntrack_net_init', # nf_conntrack
+		'ipv4_conntrack_in', # nf_conntrack_ipv4
+		'nf_nat_in', # iptable_nat
+		'masquerade_tg', # ipt_MASQUERADE
+		'iptable_filter_net_init', # iptable_filter
+		'state_mt', # xt_state
+		'reject_tg', # ipt_REJECT
+		'iptable_mangle_net_init', # iptable_mangle
+		'mark_tg', # xt_mark
+	))
+	
 	load_modules(*modules)
 	
-	if not check_modules(*modules):
-		print "Error: not all modules could be loaded successfully. Check that you have them all."
-		print modules
-		exit(1)
+	missing_modules = check_modules(*modules)
+	
+	if missing_modules:
+		# check for symbols too, in case it is built into the kernel.
+		missing_symbols = check_symbols(*symbols)
+		if missing_symbols:
+			print "Error: not all modules could be loaded successfully.  The following are missing:"
+			print missing_modules
+			print ""
+			print "Though some of those modules may be in-kernel.  These symbols are missing:"
+			print missing_symbols
+			print ""
+			print "This may mean that you have not built all dependancies."
+			exit(1)
+		else:
+			# all symbols are there, continue onward.
+			# probably using fedora where some of this is in-kernel
+			pass
 
 	# enable forwarding
 	write_file('/proc/sys/net/ipv4/ip_forward', 1)
@@ -131,11 +182,22 @@ def create_nat():
 	run((IPTABLES,'-D','FORWARD','-p','tcp','-j','REJECT','--reject-with','tcp-reset'))
 	run((IPTABLES,'-D','FORWARD','-j','REJECT','--reject-with',REJECT_MODE))
 	
+	# define port forwarding chain
+	run((IPTABLES,'-t','nat','-D','PREROUTING','-j',IP4PF_RULE))
+	run((IPTABLES,'-t','nat','-N',IP4PF_RULE))
+	run((IPTABLES,'-t','nat','-F',IP4PF_RULE))
+	run((IPTABLES,'-t','nat','-I','PREROUTING','1','-j',IP4PF_RULE))
+
+	run((IPTABLES,'-t','filter','-D','FORWARD','-j',IP4PF_RULE))
+	run((IPTABLES,'-t','filter','-N',IP4PF_RULE))
+	run((IPTABLES,'-t','filter','-F',IP4PF_RULE))
+	run((IPTABLES,'-t','filter','-I','FORWARD','1','-j',IP4PF_RULE))
+	
 	# handle captivity properly with tproxy
-	run((IPTABLES,'-D','FORWARD','--mark','0x1','-i',INTERN_IFACE,'-p','tcp','--dport','80','-j','ACCEPT'))
-	run((IPTABLES,'-D','FORWARD','--mark','0x1','-o',INTERN_IFACE,'-p','tcp','--sport','80','-j','ACCEPT'))
-	run((IPTABLES,'-A','FORWARD','--mark','0x1','-i',INTERN_IFACE,'-p','tcp','--dport','80','-j','ACCEPT'))
-	run((IPTABLES,'-A','FORWARD','--mark','0x1','-o',INTERN_IFACE,'-p','tcp','--sport','80','-j','ACCEPT'))
+	run((IPTABLES,'-D','FORWARD','-m','mark','--mark','0x1','-i',INTERN_IFACE,'-p','tcp','--dport','80','-j','ACCEPT'))
+	run((IPTABLES,'-D','FORWARD','-m','mark','--mark','0x1','-o',INTERN_IFACE,'-p','tcp','--sport','80','-j','ACCEPT'))
+	run((IPTABLES,'-A','FORWARD','-m','mark','--mark','0x1','-i',INTERN_IFACE,'-p','tcp','--dport','80','-j','ACCEPT'))
+	run((IPTABLES,'-A','FORWARD','-m','mark','--mark','0x1','-o',INTERN_IFACE,'-p','tcp','--sport','80','-j','ACCEPT'))
 	
 	if REJECT_TCP_RESET:
 		run((IPTABLES,'-A','FORWARD','-p','tcp','-j','REJECT','--reject-with','tcp-reset'))
@@ -290,19 +352,29 @@ class PortalBackendAPI(dbus.service.Object):
 		run((IPTABLES,'-F',user_rule(uid)))
 
 		# then make them allowed
-		run((IPTABLES,'-A',user_rule(uid),'-m','quota2','--name',user_rule(uid),'--grow'))
-		set_quota2_amount(user_rule(uid), 0L)
 		if quota != None:
-			run((IPTABLES,'-A',user_rule(uid),'-m','quota2','--name',limit_rule(uid),'--quota',str(quota),'-j',ALLOWED_RULE))
+			# enforce quota limits for user.
+			# Allow the traffic through if there is quota available, record it's
+			# use on the positive counter.
+			run((IPTABLES,'-A',user_rule(uid),'-m','quota2','--name',limit_rule(uid),'--quota',str(quota),'-m','quota2','--name',user_rule(uid),'--grow','-j',ALLOWED_RULE))
+			set_quota2_amount(user_rule(uid), 0L)
+			
 			set_quota2_amount(limit_rule(uid), long(quota))
 		else:
-			# cheat here to allow all traffic through, because later on there is
-			# a "captivity check" which requires that it lets all of the first
-			# packet through.  it's no-count mode so it'll never change
+			# Unlimited quota.
 			#
-			# however this has no effect if no rule exists that actually uses it
-			run((IPTABLES,'-A',user_rule(uid),'-m','quota2','--name',limit_rule(uid),'--quota','999999','--no-change','-j',ALLOWED_RULE))
-			set_quota2_amount(limit_rule(uid), 999999)
+			# Cheat here to allow all traffic through, because later on there
+			# is a "captivity check" which requires that it lets all of the 
+			# first packet through.  It's no-count mode so it'll never change.
+			#
+			# However this has no effect if no rule exists that actually uses it.
+			#
+			# This will likely break with packets bigger than the amount
+			# specified. It is set to stop at about 10 MiB, which is still
+			# bigger than the MTU for most systems.
+			run((IPTABLES,'-A',user_rule(uid),'-m','quota2','--name',limit_rule(uid),'--quota','10485760','--no-change','-m','quota2','--name',user_rule(uid),'--grow','-j',ALLOWED_RULE))
+			set_quota2_amount(user_rule(uid), 0L)
+			set_quota2_amount(limit_rule(uid), 10485760)
 
 	@dbus.service.method(dbus_interface=DBUS_INTERFACE, in_signature='sss', out_signature='')
 	def add_host(self, uid, mac, ip):
@@ -371,7 +443,7 @@ class PortalBackendAPI(dbus.service.Object):
 		except:
 			return (False, 0)
 	
-	@dbus.service.method(dbus_interface=DBUS_INTERFACE, in_signature='', out_signature='a(si)')
+	@dbus.service.method(dbus_interface=DBUS_INTERFACE, in_signature='', out_signature='a(sx)')
 	def get_all_users_quota_remaining(self):
 		"""
 		Gets all user's remaining quota.
@@ -482,12 +554,17 @@ class PortalBackendAPI(dbus.service.Object):
 
 
 def setup_dbus():
+	DBusGMainLoop(set_as_default=True)
 	system_bus = dbus.SystemBus()
 	name = dbus.service.BusName(DBUS_SERVICE, bus=system_bus)
-	object = PortalBackendAPI(name)
-	return object
+	return name
 
-def boot_dbus():
-	mainloop = gobject.MainLoop()
-	mainloop.run()
-
+def boot_dbus(daemonise, name, pid_file=None):
+	PortalBackendAPI(name)
+	loop = glib.MainLoop()
+	if daemonise:
+		assert pid_file, 'Running in daemon mode means pid_file must be specified.'
+		from daemon import daemonize
+		daemonize(pid_file)
+	loop.run()
+	

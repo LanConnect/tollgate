@@ -7,15 +7,76 @@ Changelog
 
 All releases in the 3.x series are named after types of toothpaste.
 
-3.1.0 "Whitening" (May 2012)
+3.1.0 "Whitening" (?? July 2012)
 ----------------------------
+
+This release is still in development.
 
 * Using sass version of bootstrap to build out a distinctive theme for tollgate
 * Added SASS/Coffee build system and bootstrap scripts
 * Removed Coffee Flag
 
-3.0.0 "Cavity Protection" (May 2012)
-------------------------------------
+3.0.2 "Cavity Protection" (?? June 2012)
+----------------------------------------
+
+This release is still in development.  This release includes security fixes, and is recommended for all users.
+
+* Commenced cleanup of PEP8 warnings, wrote style guide documentation.
+* ``docs``: Documented permissions.
+* ``frontend``: Added extra reason why "cannot find MAC" page would display on the page.
+* ``frontend``: Added labels to IPv4 port forwards. (`Issue #15`_)
+* ``frontend``: Added support for DHCP servers (dnsmasq and ISC) to notify when hosts come online / go offline. (`Issue #32`_)
+* ``frontend``: Default protocol of IPv4 port forwards is now TCP.  (`Issue #17`_)
+* ``frontend``: Fix a bug where non-superusers could not sign in other users that are new, when they had the permission they would require.
+* ``frontend``: New permissions: ``can_revoke_access``, ``can_reset_own_quota``, ``can_toggle_internet``.
+* ``frontend``: New user profile flags to control the number of times a user may reset another user's quota, and the maximum amount of quota they may grant a user at sign-in.
+* ``frontend``: Permission names are now much shorter.
+* ``frontend``: **Security**: Fix a CSRF issue where a malicious user could trick an administrative user into toggling or revoking internet access for other users, toggling internet access for all users, and where it could trick a regular user into toggling their own internet access or (dis)owning hosts.
+* ``frontend``: Usage graph now shows usage in the local time of the user, rather than UTC.
+* ``scripts``: Added new OUI vendors, improved detection of Cisco.  OUI scraper now grabs all vendors, even if it doesn't recognise them.  Fixed some encoding issues when handling non-ASCII vendor names.
+
+
+.. _Issue #15: https://github.com/micolous/tollgate/issues/15
+.. _Issue #17: https://github.com/micolous/tollgate/issues/17
+.. _Issue #32: https://github.com/micolous/tollgate/issues/32
+
+
+3.0.1 "Cavity Protection" (13th May 2012)
+-----------------------------------------
+
+This is the first point release, intended for some bug fixing.
+
+* Improve daemon behaviours so they write PID files, fix Debian init scripts so that you can stop the daemons properly. (`Issue #29`_)
+* Switched ``backend`` and ``captivity`` to use ``daemon`` instead of ``python-daemon`` module.
+* ``backend``: Fix DBus service not working when run as a daemon.
+* ``backend``: Fix integer overflow in get_all_users_quota_remaining for users who had used more than 4GB quota.
+* ``backend``: Fix regression when ``TPROXY``-based captivity was introduced that broke port forwarding functionality.
+* ``backend``: Fix backend continuing to count rejected connection attempts after quota has been exceeded.  Quota will continue to be counted if it has been allowed through the standard mechanisms (so CARP setups may continue to show negative amounts).  (`Issue #20`_)
+* ``frontend``: Added scraper detection for Foxconn, HTC, Murata, RIM and Samsung.
+* ``frontend``: Added workaround for MySQL stopping accounting for quota at 4GB (``mysql_bigint_patch``), migrated all byte counters to use bigger integers (limit is now about 8.16 EiB).
+* ``frontend``: Fix missing CSRF toden on captive landing page, which would prevent you logging in using that view. (`Issue #28`_)
+* ``frontend``: Fix port forward user online colour always being red (no).
+* ``frontend``: Fix template syntax error on internet-login-success page.
+* ``frontend``: Fix template error on "my devices and quota" page when being offered a free reset (`Issue #21`_)
+* ``frontend``: Fix usage graph so that it shows the correct speed used (in KiB/s rather than KiB/ms). (`Issue #30`_)
+* ``frontend``: Improve display of quota when internet access has been revoked so it makes a bit more sense. (`Issue #27`_)
+* ``frontend``: Internet usage report now shows when quota is unmetered for a user. (`Issue #22`_)
+* ``frontend``: Port forward creator field is now filled in automatically, and no longer allows user changes of it. (`Issue #16`_)
+* ``frontend``: Prevented creation of new events with overlapping times, start times after the end date, or non-unique event names. (`Issue #23`_)
+
+.. _Issue #16: https://github.com/micolous/tollgate/issues/16
+.. _Issue #20: https://github.com/micolous/tollgate/issues/20
+.. _Issue #21: https://github.com/micolous/tollgate/issues/21
+.. _Issue #22: https://github.com/micolous/tollgate/issues/22
+.. _Issue #23: https://github.com/micolous/tollgate/issues/23
+.. _Issue #27: https://github.com/micolous/tollgate/issues/27
+.. _Issue #28: https://github.com/micolous/tollgate/issues/28
+.. _Issue #29: https://github.com/micolous/tollgate/issues/29
+.. _Issue #30: https://github.com/micolous/tollgate/issues/30
+
+
+3.0.0 "Cavity Protection" (5th May 2012)
+----------------------------------------
 
 This represents the first public stable release of tollgate (formerly portal2).  Changes from 2.8.3 (September 2010):
 

@@ -4,7 +4,7 @@ Credits / Thanks
 
 Michael Farrell (2008-)
    Website (for email contact): http://micolous.id.au/
-   
+
    Started the project, wrote almost everything.
 
 Ben Christian and Darren Mullighan (2009-)
@@ -20,7 +20,7 @@ Thomas Woolford (2012-)
    Does UI prettyness.
 
 William Brown (2009-)
-   Testing and feedback.  Deployment and packaging improvements.
+   Testing and feedback.  Deployment and packaging improvements.  Made all the Fedora packaging and documentation.
 
-Thomas Woolford (2011)
+Thomas Woolford (2012)
    New theme and support breaking out functionality

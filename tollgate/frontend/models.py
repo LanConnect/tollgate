@@ -21,7 +21,7 @@ from datetime import datetime
 from django.conf import settings
 from tollgate.frontend.tollgate_controller_api import TollgateController
 from os import popen
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError
 from socket import gethostbyaddr
 try:
 	from iplib import CIDR
@@ -61,14 +61,50 @@ def utcnow():
 		# Timezone support is disabled, return localtime instead.
 		return datetime.now()
 
+def unsigned_validator(value):
+	"""
+	Ensures that the passed value to the field is unsigned, ie: greater than or equal to 0.
+	"""
+	if value < 0:
+		raise ValidationError(_(u'%s is less than zero' % value))
+
 class UserProfile(Model):
 	class Meta:
 		ordering = ['user__username']
+		permissions = (
+			('can_toggle_internet', 'Toggle internet access for users'),
+		)
 
 	user = ForeignKey(User, unique=True, related_name="user")
 	internet_on = BooleanField(default=True)
 	theme = CharField(max_length=30, choices = THEME_CHOICES,
 									 default = THEME_CHOICES[0])
+
+	maximum_quota_signins = PositiveIntegerField(
+		default=0,
+		help_text=_("""\
+			Sets the maximum amount of quota in MiB that the user may grant to
+			users they sign in.  If set to 0, they will be able to set any quota
+			amount.  Setting this value disallows setting unlimited quota.
+
+			This will only have effect if the user has been granted permission
+			to sign in users.  Otherwise, they will not be able to sign in users.
+		""")
+	)
+
+	maximum_quota_resets = PositiveIntegerField(
+		default=0,
+		help_text=_("""\
+			Sets the maximum amount of quota resets that the user may perform on
+			other users.  If set to 0, they will be able to reset quota an
+			unlimited number of times.  If set to 1, this will mean that the user
+			can only perform the "one free reset" on behalf of another user.
+
+			This will only have effect if the user has been granted permission
+			to reset user quota for other users.  Otherwise, they will not be able
+			to reset quota for other users at all.
+		""")
+	)
 
 	def get_hosts(self):
 		return NetworkHost.objects.filter(user_profile=self)
@@ -101,9 +137,9 @@ class NetworkHost(Model):
 	class Meta:
 		ordering = ['mac_address']
 		permissions = (
-			("can_view_ownership", "May see who owns a specific computer."),
+			("can_view_ownership", "View ownership of host"),
 		)
-	mac_address = CharField(max_length=12)
+	mac_address = CharField(max_length=12, unique=True)
 	ip_address = IPAddressField()
 	computer_name = CharField(max_length=128)
 	first_connection = DateTimeField('first connection')
@@ -137,7 +173,7 @@ class NetworkHost(Model):
 class Event(Model):
 	class Meta:
 		ordering = ['start']
-	name = CharField(max_length=50)
+	name = CharField(max_length=50, unique=True)
 	start = DateTimeField()
 	end = DateTimeField()
 	def is_active(self):
@@ -148,25 +184,49 @@ class Event(Model):
 	def __unicode__(self):
 		return u'%s: %s to %s (Active = %s)' % (self.name, self.start, self.end, self.is_active())
 
+	def clean(self):
+		# check that start is less than end
+		if self.start >= self.end:
+			raise ValidationError(_(u'Start date must be before the end date.'))
+
+		# find all other events.
+		other_events = Event.objects.exclude(id=self.id) if self.id else Event.objects.all()
+
+		# find overlapping events in this event's range
+		if other_events.filter(
+			Q(start__gte=self.start, start__lte=self.end) | # start is inside event bounds
+			Q(end__gte=self.start, end__lte=self.end) |     # end is inside event bounds
+			Q(start__lte=self.start, end__gte=self.end)     # event is inside another event
+		).exists():
+			raise ValidationError(_(u'Another event overlaps with this event.'))
+
+
+
 class EventAttendance(Model):
 	class Meta:
 		ordering = ['event', 'user_profile']
 		permissions = (
-			("can_register_attendance", "May use the event attendance registration system."),
-			("can_view_quota", "May view quota usage summaries."),
-			("can_reset_quota", "May reset quota usage."),
+			("can_register_attendance", "Register event attendance"),
+			("can_view_quota", "View quota"),
+			("can_reset_quota", "Reset quota"),
+			('can_reset_own_quota', 'Reset own quota multiple times'),
+			('can_revoke_access', 'Revoke internet access for a user'),
 		)
 	event = ForeignKey(Event)
 	user_profile = ForeignKey(UserProfile)
-	quota_used = PositiveIntegerField(default=0)
-	quota_multiplier = PositiveIntegerField(default=1)
-	quota_amount = PositiveIntegerField(default=long(settings.DEFAULT_QUOTA_AMOUNT)*1048576L)
+	quota_used = BigIntegerField(default=0, validators=[unsigned_validator])
+	quota_multiplier = PositiveIntegerField(default=1, validators=[unsigned_validator])
+	quota_amount = BigIntegerField(default=long(settings.DEFAULT_QUOTA_AMOUNT)*1048576L, validators=[unsigned_validator])
 	quota_unmetered = BooleanField(default=False)
 
 	#coffee = BooleanField(default=False)
 
 	registered_by = ForeignKey(UserProfile, null=True, blank=True, related_name="registered_by")
 	registered_on = DateTimeField(auto_now_add=True)
+
+	@property
+	def is_revoked(self):
+		return self.quota_multiplier <= 0
 
 	def is_unmetered(self):
 		return self.quota_unmetered
@@ -205,7 +265,8 @@ class EventAttendance(Model):
 
 	def last_datapoint(self):
 		try:
-			return NetworkUsageDataPoint.objects.filter(event_attendance=self).order_by('-when')[0]
+			return NetworkUsageDataPoint.objects\
+				.filter(event_attendance=self).order_by('-when')[:1][0]
 		except:
 			return None
 
@@ -216,9 +277,9 @@ class EventAttendance(Model):
 			return u"0"
 
 	def __unicode__(self):
-		return u'(Event = %s) (User = %s) (Quota = %s/%s)' % (self.event, self.user_profile, bytes_str(self.quota_used), bytes_str(self.quota_amount * self.quota_multiplier))
-
-
+		return u'(Event = %s) (User = %s) (Quota = %s/%s)' % \
+			(self.event, self.user_profile, bytes_str(self.quota_used),
+				bytes_str(self.quota_amount * self.quota_multiplier))
 
 class QuotaResetEvent(Model):
 	class Meta:
@@ -256,7 +317,7 @@ class NetworkUsageDataPoint(Model):
 	when = DateTimeField(auto_now_add=True)
 	event_attendance = ForeignKey(EventAttendance)
 
-	bytes = PositiveIntegerField()
+	bytes = BigIntegerField(validators=[unsigned_validator])
 
 	def previous_dp(self):
 		# lookup the previous datapoint
@@ -284,9 +345,11 @@ class NetworkUsageDataPoint(Model):
 
 class Oui(Model):
 	"""
-	Represents an entry in the IEEE OUI table.  This is used to lookup what the vendor of a device is, and whether or not it is a console device (for console-only mode).
+	Represents an entry in the IEEE OUI table.  This is used to lookup what the vendor of a device is,
+	and whether or not it is a console device (for console-only mode).
 
-	Shouldn't store foreign-key relations against this table - it gets destroyed whenever ouiscraper is run.  Instead we should relate using the .hex field manually.
+	Shouldn't store foreign-key relations against this table - it gets destroyed whenever ouiscraper is run.
+	Instead we should relate using the .hex field manually.
 	"""
 	class Meta:
 		ordering = ['hex', ]
@@ -325,15 +388,20 @@ class IP4PortForward(Model):
 	class Meta:
 		verbose_name = 'IP4 Port Forward'
 		permissions = (
-			('can_ip4portforward', 'Can manage IPv4 port forwarding'),
+			('can_ip4portforward', 'Manage IPv4 port forwarding'),
 		)
 	host = ForeignKey(NetworkHost)
-	protocol = ForeignKey(IP4Protocol, help_text='The IPv4 protocol that this service uses.  If you don\'t know, try TCP or UDP.')
-	port = PositiveIntegerField(default=0, help_text='The internal port that the service is running on.  This has no effect if the protocol does not have port numbers.')
-	external_port = PositiveIntegerField(default=0, help_text='The external port that this service should show as running on.  This has no effect if the protocol does not have port numbers.')
+	protocol = ForeignKey(IP4Protocol, default=6,
+		help_text='The IPv4 protocol that this service uses. If you don\'t know, try TCP or UDP.')
+	port = PositiveIntegerField(default=0,
+		help_text='The internal port that the service is running on. This has no effect if the protocol does not have port numbers.')
+	external_port = PositiveIntegerField(default=0,
+		help_text='The external port that this service should show as running on. This has no effect if the protocol does not have port numbers.')
 	creator = ForeignKey(UserProfile)
 	created = DateTimeField(auto_now_add=True)
 	enabled = BooleanField(blank=True, default=True)
+	label = CharField(max_length=64, blank=True, default="",
+		help_text="Optional description of the port forward")
 
 	def __unicode__(self):
 		return u'%s %s/%s->%s' % (self.host, self.protocol.name, self.external_port, self.port)
@@ -353,7 +421,7 @@ class IP4PortForward(Model):
 
 		# make sure external and internal port are the same
 		if self.port != self.external_port:
-			raise ValidationError('Internal and external port must be the same, due to a bug.  This will be fixed in a future release.')
+			raise ValidationError('Internal and external port must be the same, due to a bug. This will be fixed in a future release.')
 
 		# make sure nothing else on the protocol is there
 		qs = IP4PortForward.objects.filter(protocol=self.protocol)
@@ -369,6 +437,11 @@ class IP4PortForward(Model):
 
 
 def get_current_event():
+	"""
+	Gets the current event.
+
+	Returns None if there is no current event.
+	"""
 	now = utcnow()
 	try:
 		return Event.objects.get(start__lte=now, end__gte=now)
@@ -394,10 +467,28 @@ def has_userprofile_attended(event, userprofile):
 	return EventAttendance.objects.filter(event__exact=event, user_profile__exact=userprofile).exists()
 
 def get_userprofile_attendance(event, userprofile):
-	return EventAttendance.objects.get(event__exact=event, user_profile__exact=userprofile)
+	"""
+	Gets the EventAttendance associated with that userprofile at this event.
+
+	Returns None if the user is not signed in.
+	"""
+	try:
+		return EventAttendance.objects.get(event__exact=event, user_profile__exact=userprofile)
+	except ObjectDoesNotExist:
+		return None
 
 def get_attendance_currentevent(userprofile):
-	return get_userprofile_attendance(get_current_event(), userprofile)
+	"""
+	Gets the user's attendance at the current event.
+
+	Returns None if there is no current event, or the user is not registered as attendending this event.
+	"""
+	e = get_current_event()
+
+	if e != None:
+		return get_userprofile_attendance(e, userprofile)
+	else:
+		return None
 
 def has_attended_currentevent(userprofile):
 	return has_userprofile_attended(get_current_event(), userprofile)
@@ -450,10 +541,13 @@ def sync_user_connections(profile, portal=None):
 	if portal == None:
 		portal = get_portalapi()
 
-	portal.flush(user_id)
-
 	# find all the user's computers.
-	hosts = NetworkHost.objects.filter(user_profile__exact=profile, online__exact=True)
+	hosts = list(NetworkHost.objects.filter(
+		user_profile__exact=profile, online__exact=True
+	).only('mac_address', 'ip_address'))
+
+	# flush the
+	portal.flush(user_id)
 
 	for host in hosts:
 		if in_lan_subnet(host.ip_address) and (not settings.ONLY_CONSOLE or host.is_console()):
@@ -462,6 +556,12 @@ def sync_user_connections(profile, portal=None):
 def refresh_quota_usage(event_attendance, portal=None):
 	if portal == None:
 		portal = get_portalapi()
+
+	event = get_current_event()
+
+	if event != event_attendance.event:
+		# not part of this event
+		return False
 
 	r = portal.get_quota(event_attendance.user_profile.user.id)
 	if r != None:
@@ -474,6 +574,8 @@ def refresh_quota_usage(event_attendance, portal=None):
 			event_attendance = event_attendance,
 			bytes = event_attendance.quota_used
 		)
+
+		return True
 
 def refresh_all_quota_usage(portal=None):
 	if portal == None:

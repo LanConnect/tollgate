@@ -15,6 +15,8 @@ Contents:
    
    introduction
    deploy
+   fedora-deploy
+   permissions
    hacking
    credits
    changelog
